@@ -1,0 +1,170 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+  SUPERADMIN
+}
+
+enum Region {
+  ANDIJON
+  BUXORO
+  FARGONA
+  JIZZAX
+  XORAZM
+  NAMANGAN
+  NAVOIY
+  QASHQADARYO
+  QORAQALPOQ
+  SAMARQAND
+  SIRDARYO
+  SURXONDARYO
+  TOSHKENT
+  TOSHKENT_SHAHAR
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  phone        String?  @unique
+  name         String
+  password     String
+  imageUrl     String?
+  role         UserRole @default(USER)
+  isVerified   Boolean  @default(false)
+  otp          String?
+  otpExpiresAt DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  applications Application[]
+  branches     Branch[]
+  myIdData     MyId?
+
+  @@map("users")
+}
+
+model Product {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String?
+  price       Float
+  stock       Int      @default(0)
+  imageUrl    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("products")
+}
+
+model Branch {
+  id           Int      @id @default(autoincrement())
+  name         String
+  address      String
+  phone        String
+  city         String
+  region       Region
+  imageUrl     String?
+  managerId    Int?
+  manager      User?    @relation(fields: [managerId], references: [id])
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  applications Application[]
+
+  @@map("branches")
+}
+
+enum ApplicationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  PROCESSING
+  COMPLETED
+}
+
+model Application {
+  id             Int               @id @default(autoincrement())
+  userId         Int
+  user           User              @relation(fields: [userId], references: [id])
+  branchId       Int?
+  branch         Branch?           @relation(fields: [branchId], references: [id])
+  title          String
+  description    String
+  videoUrl       String?
+  status         ApplicationStatus @default(PENDING)
+  amount         Float?
+  
+  // Credit Card Info for Limit Check
+  cardNumber     String?
+  cardHolderName String?
+  cardExpiry     String?
+  creditLimit    Float?
+  availableLimit Float?
+  
+  // Payment Terms
+  loanTerm       Int?              // months (3, 6, 12, 24)
+  monthlyPayment Float?
+  totalAmount    Float?            // amount + interest
+  totalPaid      Float?            @default(0)
+  remainingAmount Float?
+  
+  // Contract
+  contractId     String?
+  
+  notes          String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  payments       Payment[]
+
+  @@map("applications")
+}
+
+model Payment {
+  id            Int      @id @default(autoincrement())
+  applicationId Int
+  application   Application @relation(fields: [applicationId], references: [id])
+  contractId    String
+  amount        Float
+  paymentDate   DateTime @default(now())
+  paymentMethod String?  // card, cash, transfer
+  transactionId String?  @unique
+  status        String   @default("SUCCESS") // SUCCESS, FAILED, PENDING
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("payments")
+}
+
+model MyId {
+  id               Int       @id @default(autoincrement())
+  userId           Int       @unique
+  user             User      @relation(fields: [userId], references: [id])
+  responseId       String?
+  comparisonValue  Float?
+  passportSeries   String?
+  passportNumber   String?
+  fullName         String?
+  birthDate        String?
+  address          String?
+  nationality      String?
+  profile          Json?
+  isVerified       Boolean   @default(false)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@map("myid_verifications")
+}
